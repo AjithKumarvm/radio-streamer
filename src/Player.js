@@ -7,7 +7,8 @@ import {
     TouchableOpacity,
     DeviceEventEmitter,
     ActivityIndicator,
-    Platform
+    Platform,
+    NetInfo
 } from 'react-native';
 
 import { ReactNativeAudioStreaming } from 'react-native-audio-streaming';
@@ -22,6 +23,7 @@ const METADATA_UPDATED = 'METADATA_UPDATED';
 const BUFFERING = 'BUFFERING';
 const START_PREPARING = 'START_PREPARING'; // Android only
 const BUFFERING_START = 'BUFFERING_START'; // Android only
+let retryInitiated = false;
 
 // UI
 const iconSize = 60;
@@ -38,22 +40,36 @@ class Player extends Component {
     }
 
     componentDidMount() {
+        const self = this;
         this.subscription = DeviceEventEmitter.addListener(
             'AudioBridgeEvent', (evt) => {
                 // We just want meta update for song name
                 if (evt.status === METADATA_UPDATED && evt.key === 'StreamTitle') {
-                    this.setState({song: evt.value});
+                    this.setState({song: this.sanitise(evt.value)});
                 } else if (evt.status != METADATA_UPDATED) {
+                    if(evt.song)
+                        evt.song = this.sanitise(evt.song);
                     this.setState(evt);
                 }
+                self.handleAudioEvent();
             }
         );
 
         ReactNativeAudioStreaming.getStatus((error, status) => {
             (error) ? console.log(error) : this.setState(status)
         });
+        NetInfo.isConnected.addEventListener(
+            'connectionChange',
+            this.handleFirstConnectivityChange.bind(this)
+        );
     }
-
+    handleFirstConnectivityChange(connectionInfo) {
+        if(connectionInfo){
+            this.play();
+        }else{
+            ReactNativeAudioStreaming.stop();
+        }
+    }
     _onPress() {
         switch (this.state.status) {
             case PLAYING:
@@ -66,42 +82,91 @@ class Player extends Component {
             case STOPPED:
                 this.setState({stalled:true});
             case ERROR:
-                ReactNativeAudioStreaming.play(this.props.url, {showIniOSMediaCenter: true, showInAndroidNotifications: true});
+                this.retry();
                 break;
             case BUFFERING:
-                ReactNativeAudioStreaming.stop();
+            case BUFFERING_START:
+                this.retry();
                 break;
         }
     }
+    handleAudioEvent() {
+        switch (this.state.status) {
+            case PLAYING:
+            case STREAMING:
+                retryInitiated = false;
+                break;
+            case ERROR:
+                retryInitiated = false;
+            case BUFFERING:
+            case BUFFERING_START:
+                this.retry();
+                break;
+        }
+    }
+    retry(){
+        if(retryInitiated)
+            return;
+        const self = this;
+        retryInitiated = true;
+        setTimeout(()=>{
+            self.play();
+        },3000);
+    }
+    play() {
+        ReactNativeAudioStreaming.play(this.props.url, {showIniOSMediaCenter: true, showInAndroidNotifications: true});
+    }
+    sanitise(url){
+        if(!url)
+            return;
 
+        //remove urls
+        url = url.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '');
+        
+        //remove symbols
+        url = url.replace(/[^\w\s]/gi, '');
+
+        //remove common words in english
+        const common = ["cut"];
+        return url;
+    }
     render() {
         let icon = null;
+        let playerStatus = 'BUFFERING';
         switch (this.state.status) {
             case PLAYING:
             case STREAMING:
                 icon = <Text style={styles.icon}>॥</Text>;
+                playerStatus = 'PLAYING';
                 break;
             case PAUSED:
             case STOPPED:
             case ERROR:
                 icon = <Text style={styles.icon}>▸</Text>;
+                playerStatus = 'PREPARING';
                 break;
             case BUFFERING:
             case BUFFERING_START:
             case START_PREPARING:
                 icon = <ActivityIndicator
                     animating={true}
-                    style={{height: 80}}
+                    style={{height: 30}}
                     size="large"
                 />;
+                playerStatus = 'BUFFERING';
                 break;
         }
-
+        const programName = this.state.song;
         return (
-            <TouchableOpacity style={styles.container} onPress={this._onPress}>
-                {icon}
-                <View style={styles.textContainer}>
-                    <Text style={styles.songName}>{this.state.status}:{this.state.stalled}:{this.state.song}</Text>
+            <TouchableOpacity onPress={this._onPress} style={styles.wrapper}>
+                <View style={styles.container}>
+                    {icon}
+                </View>
+                <View style={styles.status}>
+                    <Text>{playerStatus}</Text>
+                </View>
+                <View style={styles.songNameWrapper}>
+                    <Text style={styles.songName}>{programName || '...'}</Text>
                 </View>
             </TouchableOpacity>
         );
@@ -109,18 +174,17 @@ class Player extends Component {
 }
 
 const styles = StyleSheet.create({
+    wrapper: {
+        alignItems: 'center',
+        flexDirection: 'column'
+    },
     container: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         alignItems: 'center',
         flexDirection: 'row',
         height: 80,
         paddingLeft: 10,
         paddingRight: 10,
-        borderColor: '#000033',
-        borderTopWidth: 1,
+        paddingTop:20
     },
     icon: {
         color: '#000',
@@ -136,17 +200,25 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS == 'ios' ? 10 : 0
     },
     textContainer: {
-        flexDirection: 'column',
-        margin: 10
+        flexDirection: 'row',
+        margin: 10,
+        backgroundColor:'#CCCCCC'
     },
     textLive: {
         color: '#000',
         marginBottom: 5
     },
+    songNameWrapper: {
+        flexDirection: 'row'
+    },
     songName: {
-        fontSize: 20,
+        fontSize: 11,
         textAlign: 'center',
         color: '#000'
+    },
+    status:{
+        alignItems: 'center',
+        flexDirection: 'row'
     }
 });
 
