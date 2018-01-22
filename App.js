@@ -8,7 +8,8 @@ import {
     ListView,
     Platform,
     TouchableOpacity,
-    NetInfo
+    NetInfo,
+    Image
 } from 'react-native';
 import { ReactNativeAudioStreaming } from 'react-native-audio-streaming';
 import { Player } from './src/Player';
@@ -23,7 +24,10 @@ export default class App extends Component {
     render() {
         return (
             <View style={styles.container}>
-                <Text>HELLO RADIO 90.8</Text>
+                <Image
+                    style={{width: 120, height: 100}}
+                    source={{uri: 'http://www.helloradio.in/wp-content/uploads/2016/03/Logo-Hello-Radio-1.png'}} />
+                <Text style={{marginTop:20}}>HELLO RADIO 90.8</Text>
                 <Player url={this.state.selectedSource} />
             </View>
         );

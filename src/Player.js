@@ -35,7 +35,8 @@ class Player extends Component {
         this.state = {
             status: STOPPED,
             song: '',
-            stalled:false
+            stalled:false,
+            bitRate:null
         };
     }
 
@@ -46,12 +47,17 @@ class Player extends Component {
                 // We just want meta update for song name
                 if (evt.status === METADATA_UPDATED && evt.key === 'StreamTitle') {
                     this.setState({song: this.sanitise(evt.value)});
-                } else if (evt.status != METADATA_UPDATED) {
+                }
+                else if(evt.key === 'icy-br'){
+                    this.setState({bitRate:evt.value});
+                } 
+                else if (evt.status != METADATA_UPDATED) {
                     if(evt.song)
                         evt.song = this.sanitise(evt.song);
                     this.setState(evt);
                 }
                 self.handleAudioEvent();
+                console.log('AudioBridgeEvent',evt);
             }
         );
 
@@ -89,6 +95,9 @@ class Player extends Component {
                 this.retry();
                 break;
         }
+        if(this.state.status == STOPPED){
+            this.setState({status:BUFFERING_START});
+        }
     }
     handleAudioEvent() {
         switch (this.state.status) {
@@ -121,13 +130,25 @@ class Player extends Component {
             return;
 
         //remove urls
-        url = url.replace(/(?:https?|ftp):\/\/[\n\S]+/g, '');
+        const urlRegex = /(((https?:\/\/)|(www\.))[^\s]+)/g;
+        url = url.replace(urlRegex, '');
         
         //remove symbols
         url = url.replace(/[^\w\s]/gi, '');
 
+        //remove digits
+        url = url.replace(/[0-9]/g, '');
+
         //remove common words in english
-        const common = ["cut"];
+        const common = ["cut","bgm"];
+
+        for(c in common){
+            const com = common[c];
+            url = url.replace(com,'').replace(com.toUpperCase(),'');
+        }
+
+        //fix all spaces
+        url = url.replace(/\s\s+/g, ' ');
         return url;
     }
     render() {
@@ -143,7 +164,7 @@ class Player extends Component {
             case STOPPED:
             case ERROR:
                 icon = <Text style={styles.icon}>▸</Text>;
-                playerStatus = 'PREPARING';
+                playerStatus = 'STOPPED';
                 break;
             case BUFFERING:
             case BUFFERING_START:
@@ -166,7 +187,12 @@ class Player extends Component {
                     <Text>{playerStatus}</Text>
                 </View>
                 <View style={styles.songNameWrapper}>
-                    <Text style={styles.songName}>{programName || '...'}</Text>
+                    {programName && playerStatus=='PLAYING'?
+                        <Text style={styles.songName}>
+                            {programName} {this.state.bitRate?`@ ${this.state.bitRate}Kbps`:null}
+                        </Text>:
+                        <Text style={styles.songName}>...</Text>
+                    }
                 </View>
             </TouchableOpacity>
         );
