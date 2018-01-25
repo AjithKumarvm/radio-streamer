@@ -21,6 +21,8 @@ DerivedData
 *.ipa
 *.xcuserstate
 project.xcworkspace
+ios/Example/main.jsbundle
+ios/Example/main.jsbundle.meta
 
 # Android/IJ
 #
@@ -28,6 +30,8 @@ project.xcworkspace
 .idea
 .gradle
 local.properties
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/assets/index.android.bundle.meta
 
 # node.js
 #

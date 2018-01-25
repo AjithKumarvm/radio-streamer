@@ -36,7 +36,8 @@ class Player extends Component {
             status: STOPPED,
             song: '',
             stalled:false,
-            bitRate:null
+            bitRate:null,
+            logs:null
         };
     }
 
@@ -92,7 +93,6 @@ class Player extends Component {
                 break;
             case BUFFERING:
             case BUFFERING_START:
-                this.retry();
                 break;
         }
         if(this.state.status == STOPPED){
@@ -107,9 +107,9 @@ class Player extends Component {
                 break;
             case ERROR:
                 retryInitiated = false;
+                this.retry();
             case BUFFERING:
             case BUFFERING_START:
-                this.retry();
                 break;
         }
     }
@@ -120,10 +120,15 @@ class Player extends Component {
         retryInitiated = true;
         setTimeout(()=>{
             self.play();
-        },3000);
+        },6000);
+        this.setLog('retrying');
     }
     play() {
+        this.setLog('playing');
         ReactNativeAudioStreaming.play(this.props.url, {showIniOSMediaCenter: true, showInAndroidNotifications: true});
+    }
+    setLog(log){
+        this.setState({logs:log+Date.now()});
     }
     sanitise(url){
         if(!url)
@@ -140,7 +145,7 @@ class Player extends Component {
         url = url.replace(/[0-9]/g, '');
 
         //remove common words in english
-        const common = ["cut","bgm"];
+        const common = ["Cut","bgm"];
 
         for(c in common){
             const com = common[c];

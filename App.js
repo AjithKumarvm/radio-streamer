@@ -27,7 +27,7 @@ export default class App extends Component {
                 <Image
                     style={{width: 120, height: 100}}
                     source={{uri: 'http://www.helloradio.in/wp-content/uploads/2016/03/Logo-Hello-Radio-1.png'}} />
-                <Text style={{marginTop:20}}>HELLO RADIO 90.8</Text>
+                <Text style={{marginTop:20}}>HELLO RADIO 90.8 beta</Text>
                 <Player url={this.state.selectedSource} />
             </View>
         );
