@@ -18,7 +18,7 @@ export default class App extends Component {
     constructor() {
         super();
         this.state = {
-            selectedSource: 'http://132.148.128.197:8000/helloradio.ogg'
+            selectedSource: 'http://132.148.128.197:8000/helloradio.ogg' || 'http://prclive1.listenon.in:8824/'
         };
     }
     render() {
@@ -27,7 +27,7 @@ export default class App extends Component {
                 <Image
                     style={{width: 120, height: 100}}
                     source={{uri: 'http://www.helloradio.in/wp-content/uploads/2016/03/Logo-Hello-Radio-1.png'}} />
-                <Text style={{marginTop:20}}>HELLO RADIO 90.8 beta</Text>
+                <Text style={{marginTop:20}}>HELLO RADIO 90.8(beta)</Text>
                 <Player url={this.state.selectedSource} />
             </View>
         );

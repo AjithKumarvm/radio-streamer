@@ -8,7 +8,7 @@ import {
     DeviceEventEmitter,
     ActivityIndicator,
     Platform,
-    NetInfo
+    NetInfo,
 } from 'react-native';
 
 import { ReactNativeAudioStreaming } from 'react-native-audio-streaming';
@@ -37,7 +37,8 @@ class Player extends Component {
             song: '',
             stalled:false,
             bitRate:null,
-            logs:null
+            logs:null,
+            noInternet:false
         };
     }
 
@@ -58,7 +59,7 @@ class Player extends Component {
                     this.setState(evt);
                 }
                 self.handleAudioEvent();
-                console.log('AudioBridgeEvent',evt);
+                //console.log('AudioBridgeEvent',evt);
             }
         );
 
@@ -72,22 +73,27 @@ class Player extends Component {
     }
     handleFirstConnectivityChange(connectionInfo) {
         if(connectionInfo){
-            this.play();
+            !this.state.stalled && this.play();
+            this.setState({noInternet:true});
         }else{
-            ReactNativeAudioStreaming.stop();
+            //ReactNativeAudioStreaming.stop();
+            this.setState({noInternet:false});
         }
     }
     _onPress() {
+        console.log('status:_onPress',this.state.status);
         switch (this.state.status) {
             case PLAYING:
             case STREAMING:
+                this.setState({stalled:true});
                 ReactNativeAudioStreaming.pause();
                 break;
             case PAUSED:
+                this.setState({stalled:false});
                 ReactNativeAudioStreaming.resume();
                 break;
             case STOPPED:
-                this.setState({stalled:true});
+                this.setState({stalled:false});
             case ERROR:
                 this.retry();
                 break;
@@ -100,11 +106,14 @@ class Player extends Component {
         }
     }
     handleAudioEvent() {
+        console.log('status:handleAudioEvent',this.state.status);
         switch (this.state.status) {
             case PLAYING:
             case STREAMING:
                 retryInitiated = false;
                 break;
+            case STOPPED && Platform.OS == 'android':
+                this.setState({stalled:true});
             case ERROR:
                 retryInitiated = false;
                 this.retry();
@@ -199,6 +208,7 @@ class Player extends Component {
                         <Text style={styles.songName}>...</Text>
                     }
                 </View>
+                {!this.state.noInternet?<Text style={styles.noInternet}>No Internet. Please turn on 3G or WiFi.</Text>:null}
             </TouchableOpacity>
         );
     }
@@ -250,6 +260,9 @@ const styles = StyleSheet.create({
     status:{
         alignItems: 'center',
         flexDirection: 'row'
+    },
+    noInternet:{
+        color:'red'
     }
 });
 
