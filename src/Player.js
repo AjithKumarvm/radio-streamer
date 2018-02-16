@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Platform,
     NetInfo,
+    ToastAndroid
 } from 'react-native';
 
 import { ReactNativeAudioStreaming } from 'react-native-audio-streaming';
@@ -35,7 +36,7 @@ class Player extends Component {
         this.state = {
             status: STOPPED,
             song: '',
-            stalled:false,
+            stalled:true,
             bitRate:null,
             logs:null,
             noInternet:false
@@ -59,11 +60,12 @@ class Player extends Component {
                     this.setState(evt);
                 }
                 self.handleAudioEvent();
-                //console.log('AudioBridgeEvent',evt);
+                console.log('AudioBridgeEvent',evt);
             }
         );
 
         ReactNativeAudioStreaming.getStatus((error, status) => {
+            console.log('getStatus',error,this.status);
             (error) ? console.log(error) : this.setState(status)
         });
         NetInfo.isConnected.addEventListener(
@@ -73,7 +75,7 @@ class Player extends Component {
     }
     handleFirstConnectivityChange(connectionInfo) {
         if(connectionInfo){
-            !this.state.stalled && this.play();
+            this.state.stalled && this.play();
             this.setState({noInternet:true});
         }else{
             //ReactNativeAudioStreaming.stop();
@@ -112,8 +114,15 @@ class Player extends Component {
             case STREAMING:
                 retryInitiated = false;
                 break;
-            case STOPPED && Platform.OS == 'android':
+            case STOPPED:
+                break;
+                if(Platform.OS == 'ios'){
+                    break;
+                }
+                ReactNativeAudioStreaming.stop();        
+                console.log('android stop');
                 this.setState({stalled:true});
+                ToastAndroid.show('Stop from native', ToastAndroid.SHORT);
             case ERROR:
                 retryInitiated = false;
                 this.retry();
@@ -198,7 +207,7 @@ class Player extends Component {
                     {icon}
                 </View>
                 <View style={styles.status}>
-                    <Text>{playerStatus}</Text>
+                    <Text>{playerStatus} | {this.state.status}</Text>
                 </View>
                 <View style={styles.songNameWrapper}>
                     {programName && playerStatus=='PLAYING'?
